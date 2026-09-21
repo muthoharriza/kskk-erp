@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-open-sans: 'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* Force Open Sans across ALL elements, pseudo-elements, and classes */
+  *, *::before, *::after {
+    font-family: var(--font-open-sans) !important;
+  }
+
+  html {
+    font-family: var(--font-open-sans) !important;
+    letter-spacing: normal;
+    line-height: 1.5;
+    color: #1e293b;
+    background-color: #f6f8fb;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-open-sans) !important;
+    letter-spacing: normal;
+    line-height: 1.5;
+    color: #1e293b;
+    background-color: #f6f8fb;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-open-sans) !important;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+
+  p, span, div, td, th, li, label, strong, b, em {
+    font-family: var(--font-open-sans) !important;
+  }
+
+  button, input, select, textarea, kbd, code, pre, samp {
+    font-family: var(--font-open-sans) !important;
+  }
+
+  /* Any font-mono class will also strictly use Open Sans */
+  .font-mono, [class*="font-mono"] {
+    font-family: var(--font-open-sans) !important;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Number display enhancements */
+.stat-number-hero {
+  font-family: var(--font-open-sans) !important;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Elegant card spacing & shadow */
+.erp-card {
+  background-color: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 2px 12px -2px rgba(15, 23, 42, 0.04), 0 1px 3px -1px rgba(15, 23, 42, 0.02);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.erp-card:hover {
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.07);
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media print {
+  aside, header, .no-print, button:not(.print-include) {
+    display: none !important;
+  }
+  main, .print-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

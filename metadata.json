@@ -1,0 +1,8 @@
+{
+  "name": "KSKK Madrasah Integrated Management System",
+  "description": "Enterprise Management Dashboard & Monitoring System Direktorat KSKK Madrasah, Kementerian Agama RI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
