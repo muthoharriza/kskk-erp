@@ -16,7 +16,7 @@ import {
 export const mockUsers: User[] = [
   {
     id: 'usr-1',
-    name: 'Dr. H. Moch. Muchlis, M.Ag',
+    name: 'Prof. Dr. Nyayu Khodijah, S.Ag., M.Si.',
     email: 'kepala.kskk@kemenag.go.id',
     role: 'Executive',
     nip: '197103121996031002',
@@ -792,7 +792,7 @@ export const mockBudgets: BudgetProposal[] = [
     remainingAmount: 4300000000,
     submissionDate: '2026-01-12',
     status: 'Realization',
-    approverName: 'Dr. H. Moch. Muchlis, M.Ag',
+    approverName: 'Prof. Dr. Nyayu Khodijah, S.Ag., M.Si.',
     approverRole: 'Direktur KSKK Madrasah',
     fiscalYear: 2026,
     items: [
@@ -837,7 +837,7 @@ export const mockBudgets: BudgetProposal[] = [
     remainingAmount: 15300000000,
     submissionDate: '2026-01-08',
     status: 'Realization',
-    approverName: 'Dr. H. Moch. Muchlis, M.Ag',
+    approverName: 'Prof. Dr. Nyayu Khodijah, S.Ag., M.Si.',
     fiscalYear: 2026,
     items: [],
   },
@@ -876,7 +876,7 @@ export const mockBudgets: BudgetProposal[] = [
     remainingAmount: 1100000000,
     submissionDate: '2026-01-18',
     status: 'Realization',
-    approverName: 'Dr. H. Moch. Muchlis, M.Ag',
+    approverName: 'Prof. Dr. Nyayu Khodijah, S.Ag., M.Si.',
     fiscalYear: 2026,
     items: [],
   },
@@ -1147,7 +1147,7 @@ export const mockObjectives: Objective[] = [
   {
     id: 'obj-01',
     title: 'Mewujudkan Ekosistem Kurikulum Pembelajaran Madrasah yang Holistik & Unggul Berdaya Saing Global',
-    owner: 'Dr. H. Moch. Muchlis, M.Ag',
+    owner: 'Prof. Dr. Nyayu Khodijah, S.Ag., M.Si.',
     period: 'Renstra 2025-2029 (Tahun 2026)',
     progress: 84,
     subdit: 'Kurikulum & Evaluasi',
@@ -1707,7 +1707,7 @@ for (let a = 11; a <= 20; a++) {
 // Audit Logs
 export const mockAuditLogs: AuditLog[] = [
   { id: 'aud-01', timestamp: '2026-05-20 14:22:10', user: 'Ahmad Fauzi, S.Kom., M.T.', role: 'Super Admin', action: 'UPDATE_BUDGET', module: 'Anggaran', object: 'Project KSKK-2026-003', oldValue: 'Rp 80.000.000.000', newValue: 'Rp 85.000.000.000', ipAddress: '10.20.1.45' },
-  { id: 'aud-02', timestamp: '2026-05-20 11:15:02', user: 'Dr. H. Moch. Muchlis, M.Ag', role: 'Executive', action: 'APPROVE_RAB', module: 'Approval', object: 'RAB/KSKK-KUR/2026/001', oldValue: 'Status: Review', newValue: 'Status: Approved', ipAddress: '10.20.1.12' },
+  { id: 'aud-02', timestamp: '2026-05-20 11:15:02', user: 'Prof. Dr. Nyayu Khodijah, S.Ag., M.Si.', role: 'Executive', action: 'APPROVE_RAB', module: 'Approval', object: 'RAB/KSKK-KUR/2026/001', oldValue: 'Status: Review', newValue: 'Status: Approved', ipAddress: '10.20.1.12' },
   { id: 'aud-03', timestamp: '2026-05-19 16:45:33', user: 'Hj. Siti Nurhaliza, M.Pd.', role: 'Program Manager', action: 'UPDATE_PROGRESS', module: 'Project', object: 'KSKK-2026-001 (Deep Learning Modul)', oldValue: 'Progress: 75%', newValue: 'Progress: 78%', ipAddress: '10.20.2.88' },
   { id: 'aud-04', timestamp: '2026-05-19 09:10:41', user: 'Dewi Lestari, S.Pd., M.A.', role: 'Madrasah Admin', action: 'UPDATE_BRANDING_SCORE', module: 'Branding', object: 'MAN 1 Banda Aceh (NSM 131111710007)', oldValue: 'Score: 79', newValue: 'Score: 82', ipAddress: '10.20.3.14' },
   { id: 'aud-05', timestamp: '2026-05-18 15:30:19', user: 'Bambang Sugiharto, S.E., M.Ak.', role: 'Finance', action: 'REJECT_WITH_REVISION', module: 'Approval', object: 'SPP/KSKK-SAR/2026/033 (Ruang 3T)', oldValue: 'Status: Submitted', newValue: 'Status: Revision Required', ipAddress: '10.20.1.99' },
