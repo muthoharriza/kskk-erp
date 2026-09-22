@@ -17,7 +17,7 @@ export const mockUsers: User[] = [
   {
     id: 'usr-1',
     name: 'Dr. H. Moch. Muchlis, M.Ag',
-    email: 'direktur.kskk@kemenag.go.id',
+    email: 'kepala.kskk@kemenag.go.id',
     role: 'Executive',
     nip: '197103121996031002',
     unit: 'Direktorat KSKK Madrasah',
