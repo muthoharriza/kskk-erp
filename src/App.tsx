@@ -7,6 +7,8 @@ import { GlobalSearchModal } from './components/layout/GlobalSearchModal';
 
 // Modules
 import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
+import { SubditView } from './components/subdit/SubditView';
+import { TataUsahaModule } from './components/tu/TataUsahaModule';
 import { ProjectManagement } from './components/projects/ProjectManagement';
 import { BudgetManagement } from './components/budget/BudgetManagement';
 import { ApprovalWorkflow } from './components/approval/ApprovalWorkflow';
@@ -38,6 +40,18 @@ const MainShell: React.FC = () => {
     switch (activeMenu) {
       case 'dashboard':
         return <ExecutiveDashboard />;
+      case 'subdit-kurikulum':
+        return <SubditView subditId="kurikulum" />;
+      case 'subdit-sarpras':
+        return <SubditView subditId="sarpras" />;
+      case 'subdit-kelembagaan':
+        return <SubditView subditId="kelembagaan" />;
+      case 'subdit-kesiswaan':
+        return <SubditView subditId="kesiswaan" />;
+      case 'subdit-vokasi':
+        return <SubditView subditId="vokasi-inklusi" />;
+      case 'tata-usaha':
+        return <TataUsahaModule />;
       case 'planning':
       case 'projects':
         return <ProjectManagement />;

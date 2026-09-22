@@ -15,6 +15,14 @@ import {
   MonitoringAlert,
   ApprovalDecision,
   BrandingTier,
+  SubditDetail,
+  SubditUploadItem,
+  SubditAgendaItem,
+  SubditAcademicItem,
+  SuratMasukItem,
+  SuratKeluarItem,
+  DisposisiItem,
+  ArsipTUItem,
 } from '../types';
 import {
   mockUsers,
@@ -30,9 +38,23 @@ import {
   mockAuditLogs,
   mockNotifications,
 } from '../data/mockData';
+import {
+  initialSubditsData,
+  initialSuratMasukData,
+  initialSuratKeluarData,
+  initialDisposisiData,
+  initialArsipTUData,
+  GRAND_TOTAL_PAGU_KSKK,
+} from '../data/subditData';
 
 export type NavigationMenu =
   | 'dashboard'
+  | 'subdit-kurikulum'
+  | 'subdit-sarpras'
+  | 'subdit-kelembagaan'
+  | 'subdit-kesiswaan'
+  | 'subdit-vokasi'
+  | 'tata-usaha'
   | 'planning'
   | 'projects'
   | 'budget'
@@ -89,6 +111,28 @@ interface AppContextType {
   documents: AppDocument[];
   alerts: MonitoringAlert[];
   auditLogs: AuditLog[];
+
+  // Simplified Subdit & Tata Usaha Stores
+  subdits: SubditDetail[];
+  updateSubditBudget: (subditId: string, pagu: number, realisasi: number) => void;
+  addUploadToSubdit: (subditId: string, upload: Partial<SubditUploadItem>) => void;
+  addAgendaToSubdit: (subditId: string, agenda: Partial<SubditAgendaItem>) => void;
+  addAcademicIndicator: (subditId: string, item: Partial<SubditAcademicItem>) => void;
+
+  suratMasuk: SuratMasukItem[];
+  addSuratMasuk: (surat: Partial<SuratMasukItem>) => void;
+  suratKeluar: SuratKeluarItem[];
+  addSuratKeluar: (surat: Partial<SuratKeluarItem>) => void;
+  disposisiList: DisposisiItem[];
+  addDisposisi: (disp: Partial<DisposisiItem>) => void;
+  updateDisposisiStatus: (id: string, status: DisposisiItem['status']) => void;
+  arsipTUList: ArsipTUItem[];
+  addArsipTU: (arsip: Partial<ArsipTUItem>) => void;
+
+  grandTotalPagu: number;
+  grandTotalRealisasi: number;
+  grandTotalSisa: number;
+  grandTotalPersenSerapan: number;
 
   // Mutators & Workflows
   addProject: (project: Partial<Project>) => void;
@@ -164,6 +208,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Simplified Subdit & Tata Usaha Stores
+  const [subdits, setSubdits] = useState<SubditDetail[]>(() => {
+    const saved = localStorage.getItem('kskk_subdits');
+    return saved ? JSON.parse(saved) : initialSubditsData;
+  });
+
+  const [suratMasuk, setSuratMasuk] = useState<SuratMasukItem[]>(() => {
+    const saved = localStorage.getItem('kskk_surat_masuk');
+    return saved ? JSON.parse(saved) : initialSuratMasukData;
+  });
+
+  const [suratKeluar, setSuratKeluar] = useState<SuratKeluarItem[]>(() => {
+    const saved = localStorage.getItem('kskk_surat_keluar');
+    return saved ? JSON.parse(saved) : initialSuratKeluarData;
+  });
+
+  const [disposisiList, setDisposisiList] = useState<DisposisiItem[]>(() => {
+    const saved = localStorage.getItem('kskk_disposisi');
+    return saved ? JSON.parse(saved) : initialDisposisiData;
+  });
+
+  const [arsipTUList, setArsipTUList] = useState<ArsipTUItem[]>(() => {
+    const saved = localStorage.getItem('kskk_arsip_tu');
+    return saved ? JSON.parse(saved) : initialArsipTUData;
+  });
+
+  // Persist important state
+  useEffect(() => {
+    localStorage.setItem('kskk_subdits', JSON.stringify(subdits));
+  }, [subdits]);
+
+  useEffect(() => {
+    localStorage.setItem('kskk_surat_masuk', JSON.stringify(suratMasuk));
+  }, [suratMasuk]);
+
+  useEffect(() => {
+    localStorage.setItem('kskk_surat_keluar', JSON.stringify(suratKeluar));
+  }, [suratKeluar]);
+
+  useEffect(() => {
+    localStorage.setItem('kskk_disposisi', JSON.stringify(disposisiList));
+  }, [disposisiList]);
+
+  useEffect(() => {
+    localStorage.setItem('kskk_arsip_tu', JSON.stringify(arsipTUList));
+  }, [arsipTUList]);
 
   // Persist important state
   useEffect(() => {
@@ -508,6 +599,168 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? Math.round(madrasahs.reduce((sum, m) => sum + m.branding.totalScore, 0) / madrasahs.length)
       : 68;
 
+  // Simplified Subdit and TU calculations & handlers
+  const grandTotalPagu = subdits.reduce((acc, s) => acc + s.paguTotal, 0);
+  const grandTotalRealisasi = subdits.reduce((acc, s) => acc + s.realisasiTotal, 0);
+  const grandTotalSisa = grandTotalPagu - grandTotalRealisasi;
+  const grandTotalPersenSerapan = grandTotalPagu > 0
+    ? parseFloat(((grandTotalRealisasi / grandTotalPagu) * 100).toFixed(2))
+    : 78.4;
+
+  const updateSubditBudget = (subditId: string, pagu: number, realisasi: number) => {
+    setSubdits((prev) => {
+      const updated = prev.map((s) => {
+        if (s.id === subditId) {
+          const sisa = pagu - realisasi;
+          const persen = pagu > 0 ? parseFloat(((realisasi / pagu) * 100).toFixed(2)) : 0;
+          return {
+            ...s,
+            paguTotal: pagu,
+            realisasiTotal: realisasi,
+            sisaTotal: sisa,
+            persenSerapan: persen,
+          };
+        }
+        return s;
+      });
+      const newTotal = updated.reduce((sum, s) => sum + s.paguTotal, 0);
+      return updated.map((s) => ({
+        ...s,
+        persenDariTotalAnggaran: newTotal > 0 ? parseFloat(((s.paguTotal / newTotal) * 100).toFixed(2)) : 0,
+      }));
+    });
+    addToast('success', 'Anggaran Subdit Diperbarui', 'Pagu dan realisasi berhasil disinkronisasi ke Dashboard.');
+  };
+
+  const addUploadToSubdit = (subditId: string, upload: Partial<SubditUploadItem>) => {
+    const newUpload: SubditUploadItem = {
+      id: `up-${Date.now()}`,
+      judul: upload.judul || 'Dokumen_Laporan_Subdit.pdf',
+      kategori: upload.kategori || 'Keuangan',
+      tanggal: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      uploader: upload.uploader || currentUser.name,
+      ukuran: upload.ukuran || '2.8 MB',
+      keterangan: upload.keterangan || '',
+    };
+    setSubdits((prev) =>
+      prev.map((s) => (s.id === subditId ? { ...s, uploadsList: [newUpload, ...s.uploadsList] } : s))
+    );
+    addToast('success', 'File Laporan Terunggah', `${newUpload.judul} berhasil diarsipkan.`);
+  };
+
+  const addAgendaToSubdit = (subditId: string, agenda: Partial<SubditAgendaItem>) => {
+    const newAgenda: SubditAgendaItem = {
+      id: `ag-${Date.now()}`,
+      judul: agenda.judul || 'Agenda Kegiatan Baru Subdit',
+      tanggal: agenda.tanggal || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      waktu: agenda.waktu || '09:00 - 12:00 WIB',
+      lokasi: agenda.lokasi || 'Kemenag RI Jakarta',
+      pic: agenda.pic || currentUser.name,
+      status: agenda.status || 'Akan Datang',
+      keterangan: agenda.keterangan || '',
+    };
+    setSubdits((prev) =>
+      prev.map((s) => (s.id === subditId ? { ...s, agendaList: [newAgenda, ...s.agendaList] } : s))
+    );
+    addToast('success', 'Agenda Terjadwal', `${newAgenda.judul} ditambahkan ke jadwal.`);
+  };
+
+  const addAcademicIndicator = (subditId: string, item: Partial<SubditAcademicItem>) => {
+    const newItem: SubditAcademicItem = {
+      id: `ak-${Date.now()}`,
+      indikator: item.indikator || 'Indikator Capaian Baru',
+      target: item.target || '100%',
+      realisasi: item.realisasi || '0%',
+      persentase: item.persentase || 0,
+      status: item.status || 'On Track',
+      catatan: item.catatan || '',
+    };
+    setSubdits((prev) =>
+      prev.map((s) =>
+        s.id === subditId
+          ? {
+              ...s,
+              akademik: {
+                ...s.akademik,
+                indikatorList: [...s.akademik.indikatorList, newItem],
+              },
+            }
+          : s
+      )
+    );
+    addToast('success', 'Indikator Akademik Disimpan', 'Indikator performa akademik berhasil ditambahkan.');
+  };
+
+  const addSuratMasuk = (surat: Partial<SuratMasukItem>) => {
+    const newSurat: SuratMasukItem = {
+      id: `sm-${Date.now()}`,
+      nomorSurat: surat.nomorSurat || `B-${Math.floor(1000 + Math.random() * 9000)}/TU/09/2026`,
+      pengirim: surat.pengirim || 'Instansi Terkait',
+      perihal: surat.perihal || 'Perihal Surat Masuk Baru',
+      tanggalSurat: surat.tanggalSurat || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      tanggalDiterima: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      urgensi: surat.urgensi || 'Penting',
+      status: 'Baru',
+      fileAttachment: surat.fileAttachment || 'Lampiran_Surat_Masuk.pdf',
+    };
+    setSuratMasuk((prev) => [newSurat, ...prev]);
+    addToast('success', 'Surat Masuk Tercatat', `Surat ${newSurat.nomorSurat} berhasil didaftarkan.`);
+  };
+
+  const addSuratKeluar = (surat: Partial<SuratKeluarItem>) => {
+    const newSurat: SuratKeluarItem = {
+      id: `sk-${Date.now()}`,
+      nomorSurat: surat.nomorSurat || `B-${Math.floor(3000 + Math.random() * 2000)}/DJ.I/Dt.I.I/09/2026`,
+      tujuan: surat.tujuan || 'Kepala Kanwil Kemenag se-Indonesia',
+      perihal: surat.perihal || 'Penyampaian Informasi Resmi',
+      tanggalSurat: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      penandatangan: surat.penandatangan || 'Direktur KSKK Madrasah',
+      kategori: surat.kategori || 'Nota Dinas',
+      status: surat.status || 'Terkirim',
+    };
+    setSuratKeluar((prev) => [newSurat, ...prev]);
+    addToast('success', 'Surat Keluar Tercatat', `Surat ${newSurat.nomorSurat} berhasil diterbitkan.`);
+  };
+
+  const addDisposisi = (disp: Partial<DisposisiItem>) => {
+    const newDisp: DisposisiItem = {
+      id: `dsp-${Date.now()}`,
+      suratMasukId: disp.suratMasukId,
+      nomorSurat: disp.nomorSurat || 'Surat Masuk Terkait',
+      asalSurat: disp.asalSurat || 'Pengirim Surat',
+      perihal: disp.perihal || 'Tindak lanjut surat dinas',
+      instruksiDirektur: disp.instruksiDirektur || 'Segera tindak lanjuti sesuai ketentuan.',
+      tujuanSubdit: disp.tujuanSubdit || 'Semua Subdit',
+      batasWaktu: disp.batasWaktu || '30 Sep 2026',
+      status: 'Menunggu',
+      catatanTindakLanjut: disp.catatanTindakLanjut || '',
+    };
+    setDisposisiList((prev) => [newDisp, ...prev]);
+    addToast('success', 'Disposisi Diterbitkan', `Disposisi untuk surat ${newDisp.nomorSurat} berhasil dibuat.`);
+  };
+
+  const updateDisposisiStatus = (id: string, status: DisposisiItem['status']) => {
+    setDisposisiList((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, status } : d))
+    );
+    addToast('info', 'Status Disposisi Diperbarui', `Status kini: ${status}`);
+  };
+
+  const addArsipTU = (arsip: Partial<ArsipTUItem>) => {
+    const newArsip: ArsipTUItem = {
+      id: `ars-${Date.now()}`,
+      nomorDokumen: arsip.nomorDokumen || `ARSIP-KSKK-${Date.now().toString().slice(-4)}/2026`,
+      judul: arsip.judul || 'Dokumen Arsip Resmi KSKK',
+      kategori: arsip.kategori || 'Keputusan Direktur / Dirjen',
+      tahun: arsip.tahun || 2026,
+      tanggalArsip: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+      fileSize: arsip.fileSize || '3.5 MB',
+      uploader: currentUser.name,
+    };
+    setArsipTUList((prev) => [newArsip, ...prev]);
+    addToast('success', 'Arsip Tersimpan', `${newArsip.judul} berhasil disimpan di Arsip TU.`);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -555,6 +808,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         totalRealized,
         overallAbsorptionRate,
         averageBrandingScore,
+        // Simplified Subdit & Tata Usaha Exports
+        subdits,
+        updateSubditBudget,
+        addUploadToSubdit,
+        addAgendaToSubdit,
+        addAcademicIndicator,
+        suratMasuk,
+        addSuratMasuk,
+        suratKeluar,
+        addSuratKeluar,
+        disposisiList,
+        addDisposisi,
+        updateDisposisiStatus,
+        arsipTUList,
+        addArsipTU,
+        grandTotalPagu,
+        grandTotalRealisasi,
+        grandTotalSisa,
+        grandTotalPersenSerapan,
       }}
     >
       {children}

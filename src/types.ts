@@ -414,3 +414,119 @@ export interface MonitoringAlert {
   actionNeeded: string;
   actionText?: string;
 }
+
+// ==========================================
+// SIMPLIFIED SUBDIT & TATA USAHA DATA TYPES
+// ==========================================
+
+export interface SubditAcademicItem {
+  id: string;
+  indikator: string;
+  target: string;
+  realisasi: string;
+  persentase: number;
+  status: 'Tercapai' | 'On Track' | 'Perlu Perhatian';
+  catatan?: string;
+}
+
+export interface SubditAgendaItem {
+  id: string;
+  judul: string;
+  tanggal: string;
+  waktu: string;
+  lokasi: string;
+  pic: string;
+  status: 'Akan Datang' | 'Sedang Berlangsung' | 'Selesai';
+  keterangan: string;
+}
+
+export interface SubditBudgetItem {
+  id: string;
+  namaProgram: string;
+  kodeAkun: string;
+  pagu: number;
+  realisasi: number;
+  sisa: number;
+  persen: number;
+}
+
+export interface SubditUploadItem {
+  id: string;
+  judul: string;
+  kategori: 'Keuangan' | 'Akademik' | 'Agenda' | 'Lainnya';
+  tanggal: string;
+  uploader: string;
+  ukuran: string;
+  fileUrl?: string;
+  keterangan?: string;
+}
+
+export interface SubditDetail {
+  id: string;
+  nama: string;
+  singkatan: string;
+  kasubdit: string;
+  nipKasubdit: string;
+  email: string;
+  paguTotal: number;
+  realisasiTotal: number;
+  sisaTotal: number;
+  persenSerapan: number; // (realisasiTotal / paguTotal) * 100
+  persenDariTotalAnggaran: number; // (paguTotal / grandTotalPagu) * 100
+  itemsAnggaran: SubditBudgetItem[];
+  akademik: {
+    ringkasan: string;
+    skorKinerjaAkademik: number; // 0 - 100
+    indikatorList: SubditAcademicItem[];
+  };
+  agendaList: SubditAgendaItem[];
+  uploadsList: SubditUploadItem[];
+}
+
+export interface SuratMasukItem {
+  id: string;
+  nomorSurat: string;
+  pengirim: string;
+  perihal: string;
+  tanggalSurat: string;
+  tanggalDiterima: string;
+  urgensi: 'Biasa' | 'Penting' | 'Segera' | 'Sangat Segera';
+  status: 'Baru' | 'Didisposisikan' | 'Diproses' | 'Selesai';
+  fileAttachment?: string;
+}
+
+export interface SuratKeluarItem {
+  id: string;
+  nomorSurat: string;
+  tujuan: string;
+  perihal: string;
+  tanggalSurat: string;
+  penandatangan: string;
+  kategori: 'Nota Dinas' | 'Surat Edaran' | 'Undangan' | 'Surat Keputusan' | 'Surat Tugas';
+  status: 'Konsep' | 'Menunggu TTD' | 'Terkirim' | 'Arsip';
+}
+
+export interface DisposisiItem {
+  id: string;
+  suratMasukId?: string;
+  nomorSurat: string;
+  asalSurat: string;
+  perihal: string;
+  instruksiDirektur: string;
+  tujuanSubdit: string;
+  batasWaktu: string;
+  status: 'Menunggu' | 'Dalam Proses' | 'Selesai';
+  catatanTindakLanjut?: string;
+}
+
+export interface ArsipTUItem {
+  id: string;
+  nomorDokumen: string;
+  judul: string;
+  kategori: 'Keputusan Direktur / Dirjen' | 'Juknis & Panduan' | 'Laporan Keuangan / DIPA' | 'MoU & Kerjasama' | 'Arsip Umum TU';
+  tahun: number;
+  tanggalArsip: string;
+  fileSize: string;
+  uploader: string;
+}
+

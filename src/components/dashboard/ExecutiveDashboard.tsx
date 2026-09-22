@@ -1,808 +1,576 @@
 import React, { useState } from 'react';
 import {
   TrendingUp,
-  FolderKanban,
-  CheckCircle2,
-  PieChart as PieIcon,
-  Target,
-  Star,
-  School,
-  AlertTriangle,
-  ArrowUpRight,
-  ChevronDown,
-  Calendar,
-  Building,
   DollarSign,
-  Layers,
-  FileText,
-  Activity,
-  ArrowDownRight,
+  PieChart as PieIcon,
+  BookOpen,
+  Building2,
+  Network,
+  GraduationCap,
+  Cpu,
+  Mail,
+  Calendar,
   Clock,
-  ChevronRight,
   Download,
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  ChevronRight,
+  ArrowUpRight,
+  Filter,
+  Layers,
+  Archive,
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, NavigationMenu } from '../../context/AppContext';
 
 export const ExecutiveDashboard: React.FC = () => {
   const {
-    currentUser,
-    programs,
-    projects,
-    budgets,
-    kpis,
-    objectives,
-    madrasahs,
-    alerts,
-    overallAbsorptionRate,
-    averageBrandingScore,
+    subdits,
+    grandTotalPagu,
+    grandTotalRealisasi,
+    grandTotalSisa,
+    grandTotalPersenSerapan,
+    suratMasuk,
+    suratKeluar,
+    disposisiList,
+    arsipTUList,
     setActiveMenu,
-    setSelectedProjectId,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'projects' | 'branding' | 'alerts'>('overview');
-  const [cashflowPeriod, setCashflowPeriod] = useState<'30days' | 'quarter' | 'year'>('30days');
-  const [salesPeriod, setSalesPeriod] = useState<'30days' | 'currentYear'>('30days');
-  const [plPeriod, setPlPeriod] = useState<'currentYear' | 'lastYear'>('currentYear');
+  const [filterKategori, setFilterKategori] = useState<'semua' | 'Keuangan' | 'Akademik' | 'Agenda'>('semua');
 
-  // Stats calculation
-  const totalProgramsCount = 48;
-  const activeProjectsCount = projects.filter((p) => p.status === 'In Progress' || p.status === 'Planning').length;
-  const completedProjectsCount = projects.filter((p) => p.status === 'Completed').length;
-  const atRiskProjectsCount = projects.filter((p) => p.status === 'At Risk' || p.status === 'Delayed').length;
+  // Format currency helper
+  const formatRupiah = (val: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
 
-  const kpiAverage = Math.round(kpis.reduce((acc, k) => acc + k.achievement, 0) / (kpis.length || 1));
-  const okrAverage = Math.round(objectives.reduce((acc, o) => acc + o.progress, 0) / (objectives.length || 1));
+  // Subdit navigation mapping
+  const getSubditRoute = (id: string): NavigationMenu => {
+    switch (id) {
+      case 'kurikulum':
+        return 'subdit-kurikulum';
+      case 'sarpras':
+        return 'subdit-sarpras';
+      case 'kelembagaan':
+        return 'subdit-kelembagaan';
+      case 'kesiswaan':
+        return 'subdit-kesiswaan';
+      case 'vokasi-inklusi':
+        return 'subdit-vokasi';
+      default:
+        return 'dashboard';
+    }
+  };
 
-  // Financial aggregates (DIPA KSKK)
-  const paguTotal = 1450000000000; // Rp 1.45 Triliun
-  const realisasiTotal = 1136800000000; // Rp 1.136 Triliun
-  const sisaTotal = paguTotal - realisasiTotal; // Rp 313.2 Miliar
-  const komitmenReview = 185000000000; // Rp 185 Miliar under review
+  // Get Subdit Icon
+  const getSubditIcon = (id: string) => {
+    switch (id) {
+      case 'kurikulum':
+        return <BookOpen className="w-5 h-5 text-blue-600" />;
+      case 'sarpras':
+        return <Building2 className="w-5 h-5 text-indigo-600" />;
+      case 'kelembagaan':
+        return <Network className="w-5 h-5 text-emerald-600" />;
+      case 'kesiswaan':
+        return <GraduationCap className="w-5 h-5 text-amber-600" />;
+      case 'vokasi-inklusi':
+        return <Cpu className="w-5 h-5 text-purple-600" />;
+      default:
+        return <Layers className="w-5 h-5 text-slate-600" />;
+    }
+  };
 
-  // Monthly breakdown for Profit & Loss / Realisasi per Bulan bar chart (Deskera style)
-  const monthlyRealization = [
-    { month: 'Jan', value: 38, label: '38M' },
-    { month: 'Feb', value: 85, label: '85M' },
-    { month: 'Mar', value: 145, label: '145M' },
-    { month: 'Apr', value: 210, label: '210M' },
-    { month: 'Mei', value: 285, label: '285M' },
-    { month: 'Jun', value: 198, label: '198M' },
-    { month: 'Jul', value: 125, label: '125M' },
-    { month: 'Ags', value: 30, label: '30M (Est)' },
-    { month: 'Sep', value: 0, label: '-' },
-    { month: 'Okt', value: 0, label: '-' },
-    { month: 'Nov', value: 0, label: '-' },
-    { month: 'Des', value: 0, label: '-' },
-  ];
+  // Consolidate all uploads from all subdits and TU
+  const allUploads = React.useMemo(() => {
+    const list: Array<{
+      id: string;
+      unit: string;
+      judul: string;
+      kategori: string;
+      tanggal: string;
+      uploader: string;
+      ukuran: string;
+    }> = [];
 
-  // Subdirektorat allocation list (Deskera "Bank Account" style)
-  const subditAccounts = [
-    { name: 'Kurikulum & Evaluasi', pagu: 'Rp 385.0 M', realisasi: 'Rp 312.4 M', status: 'positive' },
-    { name: 'Sarana & Prasarana', pagu: 'Rp 450.0 M', realisasi: 'Rp 368.5 M', status: 'positive' },
-    { name: 'Kelembagaan & Kerjasama', pagu: 'Rp 260.0 M', realisasi: 'Rp 198.2 M', status: 'positive' },
-    { name: 'Kesiswaan & Prestasi', pagu: 'Rp 220.0 M', realisasi: 'Rp 174.6 M', status: 'positive' },
-    { name: 'Tata Usaha & Operasional', pagu: 'Rp 135.0 M', realisasi: 'Rp 83.1 M', status: 'neutral' },
-  ];
+    // From subdits
+    subdits.forEach((s) => {
+      s.uploadsList.forEach((up) => {
+        list.push({
+          id: up.id,
+          unit: s.singkatan,
+          judul: up.judul,
+          kategori: up.kategori,
+          tanggal: up.tanggal,
+          uploader: up.uploader,
+          ukuran: up.ukuran,
+        });
+      });
+    });
+
+    // From TU Arsip
+    arsipTUList.forEach((ars) => {
+      list.push({
+        id: ars.id,
+        unit: 'Tata Usaha',
+        judul: ars.judul,
+        kategori: ars.kategori.includes('Keuangan') ? 'Keuangan' : 'Regulasi / TU',
+        tanggal: ars.tanggalArsip,
+        uploader: ars.uploader,
+        ukuran: ars.fileSize,
+      });
+    });
+
+    return list;
+  }, [subdits, arsipTUList]);
+
+  // Consolidate upcoming agendas from all subdits
+  const allAgendas = React.useMemo(() => {
+    const list: Array<{
+      id: string;
+      unit: string;
+      judul: string;
+      tanggal: string;
+      waktu: string;
+      lokasi: string;
+      pic: string;
+      status: string;
+    }> = [];
+
+    subdits.forEach((s) => {
+      s.agendaList.forEach((ag) => {
+        list.push({
+          id: ag.id,
+          unit: s.singkatan,
+          judul: ag.judul,
+          tanggal: ag.tanggal,
+          waktu: ag.waktu,
+          lokasi: ag.lokasi,
+          pic: ag.pic,
+          status: ag.status,
+        });
+      });
+    });
+
+    return list;
+  }, [subdits]);
+
+  // Filtered uploads
+  const filteredUploads = allUploads.filter((item) => {
+    if (filterKategori === 'semua') return true;
+    return item.kategori === filterKategori;
+  });
+
+  // Average academic score
+  const avgAcademicScore = Math.round(
+    subdits.reduce((acc, s) => acc + s.akademik.skorKinerjaAkademik, 0) / subdits.length
+  );
 
   return (
-    <div className="space-y-10 sm:space-y-12 max-w-7xl mx-auto pb-16 font-sans">
-      {/* 1. TOP PORTFOLIO PERFORMANCE BANNER (KeroUI Style from erp2.webp) */}
-      <div className="erp-card p-6 sm:p-8 lg:p-10 space-y-8 overflow-hidden">
-        {/* Header & Sub-navigation Tabs */}
-        <div className="space-y-6 pb-6 border-b border-slate-100">
+    <div className="space-y-8 pb-16 font-sans">
+      {/* 1. EXECUTIVE HEADER BANNER */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-100">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold tracking-wider uppercase leading-none">
-              <span>Direktorat KSKK Madrasah</span>
-              <span>•</span>
-              <span className="text-blue-600 font-bold">Executive Analytics</span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 tracking-wide uppercase">
+                Executive Dashboard
+              </span>
+              <span className="text-xs text-slate-400">• DIPA 2026</span>
+              <span className="text-xs text-slate-400">• Terpadu</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-              Performance Operational
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Dashboard Laporan Anggaran & Akademik Direktorat KSKK
             </h1>
-            <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-3xl">
-              Pusat komando terintegrasi pemantauan program kerja, realisasi anggaran DIPA 2026, capaian KPI/OKR, dan reputasi digital madrasah se-Indonesia.
+            <p className="text-sm text-slate-500 max-w-3xl leading-relaxed">
+              Pemantauan terpusat alokasi anggaran, persentase serapan tiap Subdirektorat, capaian kinerja akademik, dan arsip data upload dari seluruh Subdit & Subbag Tata Usaha.
             </p>
           </div>
 
-          {/* Sub Navigation Menu - Placed in its own row and fully contained inside the card */}
-          <div className="w-full">
-            <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-slate-100/90 rounded-2xl overflow-x-auto max-w-full">
-              {[
-                { id: 'overview', label: 'Overview' },
-                { id: 'budget', label: 'Realisasi DIPA' },
-                { id: 'projects', label: 'Proyek Strategis' },
-                { id: 'branding', label: 'Branding Madrasah' },
-                { id: 'alerts', label: 'Anomali & Mitigasi' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id as any);
-                    if (tab.id === 'budget') setActiveMenu('budget');
-                    if (tab.id === 'projects') setActiveMenu('projects');
-                    if (tab.id === 'branding') setActiveMenu('madrasah-branding');
-                    if (tab.id === 'alerts') setActiveMenu('monitoring');
-                  }}
-                  className={`px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl whitespace-nowrap transition-all duration-150 text-xs sm:text-sm font-semibold tracking-wide shrink-0 ${
-                    activeTab === tab.id
-                      ? 'bg-white text-blue-700 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => {
+                alert('Mengekspor Laporan Rekapitulasi Eksekutif KSKK TA 2026 (PDF & XLSX)');
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              Download Rekapitulasi KSKK
+            </button>
+            <button
+              onClick={() => setActiveMenu('tata-usaha')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition-colors cursor-pointer"
+            >
+              <Mail className="w-4 h-4 text-amber-600" />
+              Buka Tata Usaha
+            </button>
           </div>
         </div>
 
-        {/* 3 Prominent Stat Metric Circles (Portfolio Performance KeroUI erp2.webp style) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-          {/* Metric 1: Total Pagu */}
-          <div className="p-6 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center font-bold shrink-0 border border-amber-500/25">
-              <DollarSign className="w-7 h-7" />
+        {/* Grand Total Financial KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Pagu Anggaran KSKK
+              </p>
+              <DollarSign className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-slate-500 font-bold tracking-wider uppercase leading-snug">
-                Pagu Alokasi DIPA
+            <p className="text-xl font-extrabold text-slate-900 mt-1.5 font-mono">
+              {formatRupiah(grandTotalPagu)}
+            </p>
+            <p className="text-xs text-blue-600 mt-1 font-medium">
+              100% Pagu DIPA TA 2026
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">
+                Realisasi Keseluruhan
               </p>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight my-1">
-                Rp 1,45 Triliun
-              </h3>
-              <p className="text-xs sm:text-sm text-emerald-600 font-semibold flex items-center gap-1.5 mt-0.5">
-                <ArrowUpRight className="w-4 h-4 shrink-0" />
-                <span>100% Pagu Tersedia (APBN 2026)</span>
-              </p>
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-xl font-extrabold text-emerald-700 mt-1.5 font-mono">
+              {formatRupiah(grandTotalRealisasi)}
+            </p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="w-full bg-emerald-200 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-full rounded-full transition-all"
+                  style={{ width: `${Math.min(grandTotalPersenSerapan, 100)}%` }}
+                />
+              </div>
+              <span className="text-xs font-bold text-emerald-800 font-mono">
+                {grandTotalPersenSerapan}%
+              </span>
             </div>
           </div>
 
-          {/* Metric 2: Realisasi Anggaran */}
-          <div className="p-6 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/15 text-rose-600 flex items-center justify-center font-bold shrink-0 border border-rose-500/25">
-              <TrendingUp className="w-7 h-7" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-slate-500 font-bold tracking-wider uppercase leading-snug">
-                Realisasi Anggaran (SP2D)
+          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wider">
+                Sisa Anggaran Belum Terserap
               </p>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight my-1">
-                Rp 1,14 Triliun
-              </h3>
-              <p className="text-xs sm:text-sm text-emerald-600 font-semibold flex items-center gap-1.5 mt-0.5">
-                <ArrowUpRight className="w-4 h-4 shrink-0" />
-                <span>+14.1% Serapan YoY ({overallAbsorptionRate}%)</span>
-              </p>
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
+            <p className="text-xl font-extrabold text-amber-700 mt-1.5 font-mono">
+              {formatRupiah(grandTotalSisa)}
+            </p>
+            <p className="text-xs text-amber-600 mt-1 font-medium">
+              {(100 - grandTotalPersenSerapan).toFixed(2)}% sisa alokasi DIPA
+            </p>
           </div>
 
-          {/* Metric 3: Mutu Branding Madrasah */}
-          <div className="p-6 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center font-bold shrink-0 border border-emerald-500/25">
-              <School className="w-7 h-7" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-slate-500 font-bold tracking-wider uppercase leading-snug">
-                Indeks Mutu Branding
+          <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wider">
+                Indeks Kinerja Akademik
               </p>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight my-1">
-                84.8 <span className="text-lg sm:text-xl text-slate-400 font-bold">/ 100</span>
-              </h3>
-              <p className="text-xs sm:text-sm text-blue-600 font-semibold flex items-center gap-1.5 mt-0.5">
-                <Star className="w-4 h-4 shrink-0 fill-blue-600/20" />
-                <span>Tier Kuat & Berkembang ({madrasahs.length} Madrasah)</span>
-              </p>
+              <BookOpen className="w-4 h-4 text-indigo-600" />
             </div>
+            <div className="flex items-baseline gap-2 mt-1.5">
+              <span className="text-2xl font-black text-indigo-700 font-mono">
+                {avgAcademicScore}
+              </span>
+              <span className="text-xs text-indigo-500 font-bold">/ 100 Rata-rata</span>
+            </div>
+            <p className="text-xs text-indigo-600 mt-1 font-medium">
+              Mutu & Kurikulum Terintegrasi
+            </p>
           </div>
-        </div>
-
-        {/* Action Button Banner */}
-        <div className="flex items-center justify-center pt-2">
-          <button
-            onClick={() => setActiveMenu('reports')}
-            className="px-8 py-3 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-2.5 tracking-wider min-h-[44px]"
-          >
-            <Download className="w-4 h-4" />
-            <span>Lihat Laporan Eksekutif Lengkap</span>
-          </button>
         </div>
       </div>
 
-      {/* 2. MAIN ERP ROW 1: CASHFLOW + KOMPOSISI STATUS ANGGARAN (Balanced 7 : 5 Columns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-        {/* A. CASHFLOW AREA CHART (lg:col-span-7) */}
-        <div className="lg:col-span-7 erp-card p-6 sm:p-8 lg:p-9 flex flex-col justify-between space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-wide leading-relaxed">
-                Cashflow Realisasi DIPA
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-normal tracking-wide">
-                Perbandingan Alokasi Pagu vs Realisasi SP2D Kumulatif
-              </p>
-            </div>
-
-            <div className="self-start sm:self-center">
-              <button
-                onClick={() => setCashflowPeriod(cashflowPeriod === '30days' ? 'quarter' : '30days')}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 tracking-wide min-h-[40px]"
-              >
-                <span>{cashflowPeriod === '30days' ? 'Last 30 days' : 'Tahunan 2026'}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            </div>
-          </div>
-
-          {/* Legend Dots */}
-          <div className="flex flex-wrap items-center gap-6 text-xs sm:text-sm font-semibold text-slate-600">
-            <div className="flex items-center gap-2.5">
-              <span className="w-3 h-3 rounded-full bg-blue-600"></span>
-              <span className="tracking-wide">Pagu Terdistribusi</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-              <span className="tracking-wide">Realisasi SP2D</span>
-            </div>
-          </div>
-
-          {/* Area Chart Simulation (Curved area fill like Deskera Cashflow) */}
-          <div className="relative pt-2">
-            <div className="h-56 sm:h-64 w-full flex items-end justify-between relative border-b border-slate-200">
-              {/* SVG Area Shapes */}
-              <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <defs>
-                  <linearGradient id="paguGradLoose" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
-                  </linearGradient>
-                  <linearGradient id="realGradLoose" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.03" />
-                  </linearGradient>
-                </defs>
-                {/* Pagu Area & Line */}
-                <path
-                  d="M 0,55 Q 16,50 33,42 T 66,35 T 100,20 L 100,100 L 0,100 Z"
-                  fill="url(#paguGradLoose)"
-                />
-                <path
-                  d="M 0,55 Q 16,50 33,42 T 66,35 T 100,20"
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-
-                {/* Realisasi Area & Line */}
-                <path
-                  d="M 0,75 Q 16,68 33,52 T 66,45 T 100,28 L 100,100 L 0,100 Z"
-                  fill="url(#realGradLoose)"
-                />
-                <path
-                  d="M 0,75 Q 16,68 33,52 T 66,45 T 100,28"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-
-              {/* Y Axis Guides */}
-              <div className="absolute left-0 top-1 text-[10px] sm:text-xs font-mono text-slate-400">Rp 1.45T</div>
-              <div className="absolute left-0 top-1/2 text-[10px] sm:text-xs font-mono text-slate-400">Rp 725M</div>
-              <div className="absolute left-0 bottom-1 text-[10px] sm:text-xs font-mono text-slate-400">0</div>
-            </div>
-
-            {/* X Axis Months */}
-            <div className="flex justify-between text-xs font-mono text-slate-400 pt-3 px-2 tracking-wider">
-              <span>Feb</span>
-              <span>Mar</span>
-              <span>Apr</span>
-              <span>Mei</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Ags</span>
-            </div>
-          </div>
-
-          {/* 3 Metrics Footer */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
-            <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Alokasi DIPA</span>
-              <span className="text-sm sm:text-base font-extrabold text-slate-900 block mt-0.5">Rp 1,45 T</span>
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Realisasi SP2D</span>
-              <span className="text-sm sm:text-base font-extrabold text-emerald-600 block mt-0.5">Rp 1,14 T</span>
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Daya Serap</span>
-              <span className="text-sm sm:text-base font-extrabold text-blue-700 block mt-0.5">{overallAbsorptionRate}%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* B. UPCOMING INVOICES / STATUS DIPA DONUT (lg:col-span-5) */}
-        <div className="lg:col-span-5 erp-card p-6 sm:p-8 lg:p-9 flex flex-col justify-between space-y-6">
+      {/* 2. TABEL KINERJA TIAP SUBDIT (PERSENTASE DARI TOTAL ANGGARAN & PERSENTASE KESELURUHAN) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-wide leading-relaxed">
-              Komposisi & Status Anggaran
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 leading-normal tracking-wide">
-              Rincian Alokasi DIPA Tahun Anggaran 2026
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              <h2 className="text-lg font-bold text-slate-900">
+                Alokasi & Kinerja Tiap Subdirektorat
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Persentase porsi anggaran dari total KSKK dan persentase serapan realisasi masing-masing Subdit
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-2">
-            {/* Radial Donut Simulation */}
-            <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <path
-                  className="text-slate-100"
-                  strokeWidth="4"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className="text-emerald-500"
-                  strokeDasharray="78, 100"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className="text-rose-500"
-                  strokeDasharray="13, 100"
-                  strokeDashoffset="-78"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-              <div className="absolute text-center">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Total DIPA</span>
-                <span className="text-base sm:text-lg font-black text-slate-900 tracking-tight mt-0.5">Rp 1.45T</span>
-              </div>
-            </div>
+          <span className="text-xs text-slate-400 font-medium self-start sm:self-auto">
+            Klik nama Subdit untuk membuka laporan rinci
+          </span>
+        </div>
 
-            {/* Legend list */}
-            <div className="space-y-3.5 text-xs sm:text-sm w-full sm:w-auto">
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                  <span className="text-slate-600 font-semibold">Realisasi SP2D (78.4%)</span>
-                </div>
-                <strong className="block pl-4.5 text-emerald-700 font-extrabold text-sm sm:text-base tracking-tight mt-0.5">
-                  Rp 1.136,8 M
-                </strong>
-              </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                <th className="py-3.5 px-4">Subdirektorat</th>
+                <th className="py-3.5 px-4 text-right">Pagu Anggaran</th>
+                <th className="py-3.5 px-4 text-center">Porsi dari Total KSKK (%)</th>
+                <th className="py-3.5 px-4 text-right">Realisasi</th>
+                <th className="py-3.5 px-4 text-center">Kinerja Serapan (%)</th>
+                <th className="py-3.5 px-4 text-right">Sisa Anggaran</th>
+                <th className="py-3.5 px-4 text-center">Skor Akademik</th>
+                <th className="py-3.5 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {subdits.map((subdit) => (
+                <tr
+                  key={subdit.id}
+                  className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                  onClick={() => setActiveMenu(getSubditRoute(subdit.id))}
+                >
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                        {getSubditIcon(subdit.id)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          {subdit.nama}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Kasubdit: {subdit.kasubdit}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
 
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
-                  <span className="text-slate-600 font-semibold">Dalam Review (12.8%)</span>
-                </div>
-                <strong className="block pl-4.5 text-rose-700 font-extrabold text-sm sm:text-base tracking-tight mt-0.5">
-                  Rp 185,0 M
-                </strong>
-              </div>
+                  <td className="py-4 px-4 text-right font-mono font-semibold text-slate-900">
+                    {formatRupiah(subdit.paguTotal)}
+                  </td>
 
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                  <span className="text-slate-600 font-semibold">Sisa Pagu Terbuka (8.8%)</span>
-                </div>
-                <strong className="block pl-4.5 text-slate-800 font-extrabold text-sm sm:text-base tracking-tight mt-0.5">
-                  Rp 128,2 M
-                </strong>
-              </div>
-            </div>
-          </div>
+                  {/* PERSENTASE DARI TOTAL ANGGARAN KSKK */}
+                  <td className="py-4 px-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-full rounded-full"
+                          style={{ width: `${Math.min(subdit.persenDariTotalAnggaran * 2.5, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-extrabold text-blue-700 font-mono w-12 text-right">
+                        {subdit.persenDariTotalAnggaran}%
+                      </span>
+                    </div>
+                  </td>
 
-          <button
-            onClick={() => setActiveMenu('approval')}
-            className="w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs sm:text-sm font-bold transition-colors tracking-wide text-center min-h-[44px]"
-          >
-            Review Persetujuan Terbuka
-          </button>
+                  <td className="py-4 px-4 text-right font-mono font-semibold text-emerald-600">
+                    {formatRupiah(subdit.realisasiTotal)}
+                  </td>
+
+                  {/* PERSENTASE REALISASI KINERJA TIAP SUBDIT */}
+                  <td className="py-4 px-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-20 bg-emerald-100 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-emerald-600 h-full rounded-full"
+                          style={{ width: `${Math.min(subdit.persenSerapan, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-emerald-700 font-mono w-12 text-right">
+                        {subdit.persenSerapan}%
+                      </span>
+                    </div>
+                  </td>
+
+                  <td className="py-4 px-4 text-right font-mono text-amber-700 font-medium">
+                    {formatRupiah(subdit.sisaTotal)}
+                  </td>
+
+                  <td className="py-4 px-4 text-center">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {subdit.akademik.skorKinerjaAkademik} / 100
+                    </span>
+                  </td>
+
+                  <td className="py-4 px-4 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenu(getSubditRoute(subdit.id));
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      Buka Data
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* PERSENTASE KESELURUHAN (GRAND TOTAL ROW) */}
+              <tr className="bg-slate-100 font-extrabold border-t-2 border-slate-300 text-slate-900">
+                <td className="py-4 px-4 uppercase tracking-wider text-xs">
+                  TOTAL KESELURUHAN DIREKTORAT KSKK
+                </td>
+                <td className="py-4 px-4 text-right font-mono">
+                  {formatRupiah(grandTotalPagu)}
+                </td>
+                <td className="py-4 px-4 text-center font-mono text-blue-800">
+                  100.00%
+                </td>
+                <td className="py-4 px-4 text-right font-mono text-emerald-700">
+                  {formatRupiah(grandTotalRealisasi)}
+                </td>
+                <td className="py-4 px-4 text-center font-mono text-emerald-800">
+                  {grandTotalPersenSerapan}%
+                </td>
+                <td className="py-4 px-4 text-right font-mono text-amber-800">
+                  {formatRupiah(grandTotalSisa)}
+                </td>
+                <td className="py-4 px-4 text-center font-mono text-indigo-800">
+                  {avgAcademicScore} / 100
+                </td>
+                <td className="py-4 px-4 text-right text-xs text-slate-500 font-medium">
+                  5 Subdit + TU
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* 3. MAIN ERP ROW 2: STATUS PENYERAPAN (PROGRESS BAR) + TREN REALISASI PER BULAN (Balanced 6 : 6 Columns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-        {/* A. STATUS PENYERAPAN DIPA (lg:col-span-6) */}
-        <div className="lg:col-span-6 erp-card p-6 sm:p-8 lg:p-9 flex flex-col justify-between space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-wide leading-relaxed">
-                Status Tagihan & Penyerapan (DIPA)
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-normal tracking-wide">
-                Komposisi Realisasi SP2D vs Sisa Pagu Terbuka
-              </p>
-            </div>
-
-            <div className="self-start sm:self-center">
-              <button
-                onClick={() => setSalesPeriod(salesPeriod === '30days' ? 'currentYear' : '30days')}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 tracking-wide min-h-[40px]"
-              >
-                <span>{salesPeriod === '30days' ? 'Last 30 days' : 'Tahun 2026'}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            </div>
-          </div>
-
-          {/* Big Currency Metrics with Clean Proportions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100">
-              <p className="text-xs text-blue-800 font-bold tracking-wider uppercase">Realisasi Diserap</p>
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-blue-700 tracking-tight leading-tight mt-1">
-                Rp 1.136,8 M
-              </h3>
-              <span className="text-xs text-blue-600 font-semibold mt-0.5 block">78.4% dari Pagu DIPA</span>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
-              <p className="text-xs text-slate-500 font-bold tracking-wider uppercase">Sisa Pagu Belum SP2D</p>
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-800 tracking-tight leading-tight mt-1">
-                Rp 313,2 M
-              </h3>
-              <span className="text-xs text-slate-500 font-semibold mt-0.5 block">21.6% Pagu Tersedia</span>
-            </div>
-          </div>
-
-          {/* Horizontal Multi-color Progress Bar with ample breathing room */}
-          <div className="space-y-4 pt-2">
-            <div className="h-5 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
-              <div className="bg-blue-600 h-full transition-all duration-500" style={{ width: '78.4%' }} title="Realisasi SP2D 78.4%"></div>
-              <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: '14.5%' }} title="Dalam Proses 14.5%"></div>
-              <div className="bg-rose-500 h-full transition-all duration-500" style={{ width: '7.1%' }} title="Deviasi Jadwal 7.1%"></div>
-            </div>
-
-            {/* Legend beneath the bar */}
-            <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-600 font-medium">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-blue-600 shrink-0"></span>
-                <span>Terealisasi SP2D (78.4%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
-                <span>Verifikasi Kemenkeu (14.5%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500 shrink-0"></span>
-                <span>Deviasi / At Risk (7.1%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* B. PROFIT & LOSS / MONTHLY BAR CHART (lg:col-span-6) */}
-        <div className="lg:col-span-6 erp-card p-6 sm:p-8 lg:p-9 flex flex-col justify-between space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-wide leading-relaxed">
-                Tren Realisasi Anggaran per Bulan
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-normal tracking-wide">
-                Distribusi Pembayaran SP2D (Januari - Desember 2026)
-              </p>
-            </div>
-
-            <div className="self-start sm:self-center">
-              <button
-                onClick={() => setPlPeriod(plPeriod === 'currentYear' ? 'lastYear' : 'currentYear')}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 tracking-wide min-h-[40px]"
-              >
-                <span>{plPeriod === 'currentYear' ? 'Current Year' : 'Tahun Lalu'}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            </div>
-          </div>
-
-          {/* Bar Chart Container with Horizontal Scroll on Small Phones */}
-          <div className="relative pt-4 overflow-x-auto">
-            <div className="min-w-[440px] sm:min-w-0">
-              <div className="h-52 w-full flex items-end justify-between gap-2 px-2 border-b border-slate-200">
-                {monthlyRealization.map((item, idx) => {
-                  const heightPercent = item.value > 0 ? (item.value / 300) * 100 : 4;
-                  const isCurrent = item.month === 'Jun' || item.month === 'Jul';
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono font-bold text-slate-700 mb-1.5">
-                        {item.label}
-                      </span>
-                      <div
-                        className={`w-full rounded-t-md transition-all duration-200 ${
-                          isCurrent
-                            ? 'bg-blue-600 hover:bg-blue-700'
-                            : item.value > 0
-                            ? 'bg-blue-400/80 hover:bg-blue-500'
-                            : 'bg-slate-100'
-                        }`}
-                        style={{ height: `${heightPercent}%` }}
-                      ></div>
-                    </div>
-                  );
-                })}
+      {/* 3. DUA KOLOM: FEED LAPORAN UPLOAD SUBDIT & TU + AGENDA TERDEKAT */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Kolom Kiri: Pusat Unduh Laporan Upload dari Tiap Subdit & TU */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <UploadCloud className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Laporan yang Di-Upload Subdit & TU
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Arsip berkas keuangan & akademik terunggah
+                </p>
               </div>
 
-              {/* Months Axis */}
-              <div className="flex justify-between text-xs font-mono text-slate-400 pt-3 px-1 tracking-wider">
-                {monthlyRealization.map((item, idx) => (
-                  <span key={idx} className="flex-1 text-center truncate">
-                    {item.month}
-                  </span>
+              {/* Filter tabs */}
+              <div className="flex items-center gap-1 text-xs">
+                {(['semua', 'Keuangan', 'Akademik'] as const).map((kat) => (
+                  <button
+                    key={kat}
+                    onClick={() => setFilterKategori(kat)}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                      filterKategori === kat
+                        ? 'bg-blue-600 text-white font-bold'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {kat === 'semua' ? 'Semua' : kat}
+                  </button>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 4. MAIN ERP ROW 3: ALOKASI & KINERJA PER SUBDIREKTORAT (Dedicated Full Width Section) */}
-      <div className="erp-card p-6 sm:p-8 lg:p-9 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-wide leading-relaxed">
-              Alokasi Anggaran & Serapan per Subdirektorat
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 leading-normal tracking-wide mt-0.5">
-              Monitoring Saldo Pagu DIPA 2026 dan Serapan SP2D per Unit Kerja Direktorat KSKK Madrasah
-            </p>
-          </div>
-          <button
-            onClick={() => setActiveMenu('budget')}
-            className="self-start sm:self-center px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-semibold transition-colors shrink-0"
-          >
-            Lihat Rincian Akun DIPA Lengkap →
-          </button>
-        </div>
-
-        {/* 5 Subdit Responsive Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {subditAccounts.map((item, idx) => {
-            const percentage = idx === 0 ? 81.1 : idx === 1 ? 81.9 : idx === 2 ? 76.2 : idx === 3 ? 79.4 : 61.6;
-            const isOnTrack = percentage >= 75;
-            return (
-              <div
-                key={idx}
-                className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex flex-col justify-between space-y-3 hover:bg-slate-50 transition-colors"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600">
-                      Subdit 0{idx + 1}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                        isOnTrack ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                      }`}
-                    >
-                      {isOnTrack ? 'On Track' : 'Perhatian'}
-                    </span>
+            <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto pr-1">
+              {filteredUploads.map((file) => (
+                <div
+                  key={file.id}
+                  className="py-3 flex items-center justify-between hover:bg-slate-50 rounded-xl px-2 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 text-xs truncate">
+                        {file.judul}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                        <strong className="text-blue-700">{file.unit}</strong> • {file.kategori} • {file.tanggal} ({file.ukuran})
+                      </p>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-xs sm:text-sm text-slate-900 leading-snug">
-                    {item.name}
-                  </h4>
+
+                  <button
+                    onClick={() => alert(`Mengunduh berkas: ${file.judul}`)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer shrink-0 ml-2"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Unduh
+                  </button>
                 </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-slate-400 font-medium">Realisasi</span>
-                    <span className="font-extrabold text-sm text-emerald-700">{item.realisasi}</span>
-                  </div>
-                  <div className="flex items-baseline justify-between text-[11px] text-slate-500">
-                    <span>Pagu Total</span>
-                    <span className="font-semibold">{item.pagu}</span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mt-2">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isOnTrack ? 'bg-emerald-500' : 'bg-amber-500'
-                      }`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-right text-[10px] font-bold text-slate-500 font-mono">
-                    {percentage}% Terserap
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. BOTTOM 4 KPI HIGHLIGHT CARDS (KeroUI Style from erp2.webp bottom cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-        {/* Card 1: Proyek Aktif (Green bottom border) */}
-        <div className="erp-card border-b-4 border-b-emerald-500 p-5 sm:p-6 space-y-2 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-500 font-bold tracking-wider uppercase">
-              Proyek Aktif
-            </span>
-            <span className="text-emerald-700 text-xs font-extrabold px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 shrink-0">
-              38 Unit
-            </span>
-          </div>
-          <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight my-1">
-            38 <span className="text-base sm:text-lg font-bold text-slate-500">Proyek</span>
-          </h4>
-          <p className="text-xs text-slate-500 leading-normal">
-            26 Selesai • 12 Sedang Berjalan
-          </p>
-          <div className="h-6 w-full pt-1">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 25">
-              <path
-                d="M 0,20 Q 25,5 50,18 T 100,6"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* Card 2: Daya Serap DIPA (Blue bottom border) */}
-        <div className="erp-card border-b-4 border-b-blue-600 p-5 sm:p-6 space-y-2 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-500 font-bold tracking-wider uppercase">
-              Daya Serap DIPA
-            </span>
-            <span className="text-blue-700 text-xs font-extrabold px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 shrink-0">
-              Target 75%
-            </span>
-          </div>
-          <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-blue-700 tracking-tight leading-tight my-1">
-            {overallAbsorptionRate}%
-          </h4>
-          <p className="text-xs text-slate-500 leading-normal">
-            Di atas target nasional (75%)
-          </p>
-          <div className="h-6 w-full pt-1">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 25">
-              <path
-                d="M 0,22 Q 25,12 50,8 T 100,4"
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* Card 3: Capaian KPI (Amber/Yellow bottom border) */}
-        <div className="erp-card border-b-4 border-b-amber-500 p-5 sm:p-6 space-y-2 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-500 font-bold tracking-wider uppercase">
-              Capaian KPI
-            </span>
-            <span className="text-amber-700 text-xs font-extrabold px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 shrink-0">
-              9/10 On Track
-            </span>
-          </div>
-          <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-amber-600 tracking-tight leading-tight my-1">
-            {kpiAverage}%
-          </h4>
-          <p className="text-xs text-slate-500 leading-normal">
-            9 dari 10 Indikator On Track
-          </p>
-          <div className="h-6 w-full pt-1">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 25">
-              <path
-                d="M 0,15 Q 30,22 60,10 T 100,7"
-                fill="none"
-                stroke="#f59e0b"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* Card 4: Database Madrasah (Rose/Red bottom border) */}
-        <div className="erp-card border-b-4 border-b-rose-500 p-5 sm:p-6 space-y-2 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-500 font-bold tracking-wider uppercase">
-              Madrasah Terekam
-            </span>
-            <span className="text-rose-700 text-xs font-extrabold px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 shrink-0">
-              34 Provinsi
-            </span>
-          </div>
-          <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight my-1">
-            4.820 <span className="text-base sm:text-lg font-bold text-slate-500">Lembaga</span>
-          </h4>
-          <p className="text-xs text-slate-500 leading-normal">
-            34 Provinsi terintegrasi SIMPATIKA
-          </p>
-          <div className="h-6 w-full pt-1">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 25">
-              <path
-                d="M 0,18 Q 25,8 50,15 T 100,5"
-                fill="none"
-                stroke="#f43f5e"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. EARLY WARNING & DETEKSI ANOMALI */}
-      <div className="erp-card p-6 sm:p-8 lg:p-9 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200/60 shrink-0">
-              <Activity className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-wide leading-relaxed">
-                Early Warning & Deteksi Anomali
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-400 leading-normal">
-                Peringatan dini keterlambatan serapan, deviasi fisik, atau risiko madrasah
-              </p>
+              ))}
             </div>
           </div>
 
-          <button
-            onClick={() => setActiveMenu('monitoring')}
-            className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1.5 tracking-wider self-start sm:self-center min-h-[40px]"
-          >
-            <span>Buka Monitoring Center</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <div className="pt-4 border-t border-slate-100 mt-4 text-center">
+            <span className="text-xs text-slate-500">
+              Total {allUploads.length} dokumen tersinkronisasi dari Subdit & TU
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
-          {alerts.slice(0, 3).map((alert) => (
-            <div
-              key={alert.id}
-              className={`p-5 rounded-2xl border flex items-start gap-4 transition-colors overflow-hidden ${
-                alert.level === 'red'
-                  ? 'bg-rose-50/50 border-rose-200'
-                  : alert.level === 'orange'
-                  ? 'bg-amber-50/50 border-amber-200'
-                  : 'bg-yellow-50/50 border-yellow-200'
-              }`}
-            >
-              <AlertTriangle
-                className={`w-5 h-5 shrink-0 mt-0.5 ${
-                  alert.level === 'red'
-                    ? 'text-rose-600'
-                    : alert.level === 'orange'
-                    ? 'text-amber-600'
-                    : 'text-yellow-600'
-                }`}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-slate-500 truncate">
-                    {alert.category}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{alert.timestamp}</span>
+        {/* Kolom Kanan: Agenda Terdekat Seluruh Subdit & TU */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Agenda Terdekat Lintas Subdit & TU
+                  </h3>
                 </div>
-                <h5 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                  {alert.title}
-                </h5>
-                <p className="text-xs text-slate-600 mt-1 leading-normal line-clamp-2">
-                  {alert.detail}
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Timeline rapat pleno, bimtek, supervisi, dan kegiatan penting
                 </p>
               </div>
+
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                {allAgendas.length} Jadwal Aktif
+              </span>
             </div>
-          ))}
+
+            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+              {allAgendas.slice(0, 5).map((ag) => (
+                <div
+                  key={ag.id}
+                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-blue-200 transition-all"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
+                      {ag.unit}
+                    </span>
+                    <span className="text-slate-500 font-mono font-bold">
+                      {ag.tanggal} • {ag.waktu}
+                    </span>
+                  </div>
+
+                  <h4 className="font-bold text-slate-900 text-xs mt-2 leading-snug">
+                    {ag.judul}
+                  </h4>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2">
+                    <span className="truncate">Lokasi: {ag.lokasi}</span>
+                    <span className="shrink-0 font-medium">PIC: {ag.pic}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 mt-4 text-center">
+            <button
+              onClick={() => setActiveMenu('subdit-kurikulum')}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-1 cursor-pointer"
+            >
+              Kelola Jadwal & Agenda Subdit
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
